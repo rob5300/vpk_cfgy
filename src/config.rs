@@ -6,13 +6,14 @@ use regex::Regex;
 pub struct Config
 {
     json: JsonValue,
+    pub vmt_path: String
 }
 
 pub struct VpkEntry
 {
-    regex: Regex,
-    name: String,
-    args: String
+    pub regex: Regex,
+    pub name: String,
+    pub args: String
 }
 
 impl Config 
@@ -25,13 +26,15 @@ impl Config
                     object!{regex: ".*", name: "all.vpk", args: "-P"},
                     object!{regex: "^_+", name: "some.vpk", args: "-P"}
                 ]
-            }
+            },
+            vmt_path: "".to_string()
         }
     }
 
     pub fn create(json: &String) -> Result<Config, JsonError> {
         let parsed_obj = json::parse(json)?;
-        Ok(Config { json: parsed_obj })
+        let vmt_path = parsed_obj["vmt_path"].to_string();
+        Ok(Config { json: parsed_obj, vmt_path: vmt_path })
     }
 }
 
@@ -47,10 +50,6 @@ impl VpkEntry {
 
 impl Config
 {
-    pub fn vmt_path(&self) -> String {
-        self.json["vmt_path"].to_string()
-    }
-
     pub fn get_vpk_entries(&self) -> Result<Vec<VpkEntry>, Box<dyn Error>>{
         let vpks = &self.json["vpks"];
         if vpks.is_array() {
