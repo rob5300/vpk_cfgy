@@ -8,10 +8,11 @@ use std::process::Command;
 use std::process::ExitStatus;
 use walkdir::WalkDir;
 use tempfile::{self, NamedTempFile};
-use std::thread;
-use std::time;
+use once_cell::sync::Lazy;
 
 mod config;
+
+static IGNORED_EXTENSIONS: Lazy<Vec<&str>> = Lazy::new(|| { vec!("exe", "vpk", "json") });
 
 fn main() {
     println!("[VPK cfgy] by rob5300");
@@ -78,10 +79,17 @@ fn process_vpk_entries(config: &Config, working_dir: &Path) -> Result<(), Box<dy
         let matching_files: Vec<String> = WalkDir::new(working_dir).into_iter().filter_map(|f| {
             let dir_entry = f.unwrap();
             let path = dir_entry.path();
+            
+            //Ignore some file extensions
+            let extension = path.extension()?.to_str()?;
+            if IGNORED_EXTENSIONS.contains(&extension) {
+                return None;
+            }
+            
             let relative_path = path.strip_prefix(working_dir).unwrap();
 
+            //Does this file name and path match the configured expressions?
             if path.is_file() && entry.regex.is_match(path.file_name()?.to_str()?) && entry.dir_regex.is_match(relative_path.parent().unwrap().to_str()?) {
-                //Create quote wrapped string for path
                 let new_path_arg = relative_path.to_str()?.to_owned();
                 Some(new_path_arg)
             }
@@ -105,6 +113,9 @@ fn process_vpk_entries(config: &Config, working_dir: &Path) -> Result<(), Box<dy
 
         let mut args = Vec::<String>::new();
 
+        args.push("-v".to_owned());
+
+        //Add user args if any
         if entry.args.len() > 0 {
             let split_args = entry.args.split(" ");
             for arg in split_args {
@@ -115,7 +126,7 @@ fn process_vpk_entries(config: &Config, working_dir: &Path) -> Result<(), Box<dy
         args.push("a".to_owned());
         args.push(vpk_name.clone());
 
-        //Add response file arg
+        //Add response file arg containing the filtered file paths
         let response_file = get_files_response_file(&matching_files)?;
         let response_file_tmp_path = response_file.into_temp_path();
         let response_file_path_str = response_file_tmp_path.to_str().ok_or("Failed to get path for temp response file")?;
@@ -152,10 +163,6 @@ fn execute_vpk(config: &Config, working_dir: &Path, args: Vec<String>) -> Result
     .args(args)
     .spawn()?;
 
-    while command.try_wait()?.is_none() {
-        println!("...Waiting...");
-        thread::sleep(time::Duration::from_millis(500));
-    }
     let exit_status = command.wait()?;
     if exit_status.success() {
         println!("-- ✅ VPK Completed Successfully --");
