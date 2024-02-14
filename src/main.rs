@@ -76,6 +76,7 @@ fn process_vpk_entries(config: &Config, working_dir: &Path) -> Result<(), Box<dy
         //Filter files that match this vpk entry regex
         let regex_str = entry.regex.as_str();
         println!("#{} Finding files for vpk entry with regex '{}' ...", entry_num, &regex_str);
+        let mut file_count = 0;
         let matching_files: Vec<String> = WalkDir::new(working_dir).into_iter().filter_map(|f| {
             let dir_entry = f.unwrap();
             let path = dir_entry.path();
@@ -88,6 +89,10 @@ fn process_vpk_entries(config: &Config, working_dir: &Path) -> Result<(), Box<dy
             
             let relative_path = path.strip_prefix(working_dir).unwrap();
 
+            if path.is_file() {
+                file_count += 1;
+            }
+
             //Does this file name and path match the configured expressions?
             if path.is_file() && entry.regex.is_match(path.file_name()?.to_str()?) && entry.dir_regex.is_match(relative_path.parent().unwrap().to_str()?) {
                 let new_path_arg = relative_path.to_str()?.to_owned();
@@ -98,10 +103,11 @@ fn process_vpk_entries(config: &Config, working_dir: &Path) -> Result<(), Box<dy
             }
         }).collect();
 
-        println!("Found {} files", matching_files.len());
+        println!("Matched {}/{file_count} files", matching_files.len());
 
         //Skip when 0 files match
         if matching_files.len() == 0 {
+            println!("Skipping creation of '{}' due to 0 matches!", entry.name);
             continue;
         }
 
