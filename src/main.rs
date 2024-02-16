@@ -94,7 +94,7 @@ fn process_vpk_entries(config: &Config, working_dir: &Path) -> Result<(), Box<dy
             }
 
             //Does this file name and path match the configured expressions?
-            if path.is_file() && entry.regex.is_match(path.file_name()?.to_str()?) && entry.dir_regex.is_match(relative_path.parent().unwrap().to_str()?) {
+            if path.is_file() && entry.regex.is_match(path.file_name()?.to_str()?).ok()? && entry.dir_regex.is_match(relative_path.parent().unwrap().to_str()?).ok()? {
                 let new_path_arg = relative_path.to_str()?.to_owned();
                 Some(new_path_arg)
             }

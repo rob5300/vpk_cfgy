@@ -1,7 +1,7 @@
 use std::{error::Error, io, rc::Rc};
 
 use json::{object, JsonError, JsonValue, array};
-use regex::Regex;
+use fancy_regex::Regex;
 
 pub struct Config
 {
